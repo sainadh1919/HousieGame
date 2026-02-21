@@ -34,15 +34,15 @@
       top: 10px;
     }
 
-    .controls button {
+    .controls button, .controls select {
       padding: 14px 12px;
       font-size: 16px;
       border: none;
       border-radius: 10px;
-      background: #22c55e;
       cursor: pointer;
     }
 
+    .controls button { background: #22c55e; }
     .controls .reset-btn { background: #ef4444; }
     .controls .fs-btn { background: #3b82f6; }
 
@@ -117,9 +117,19 @@
 
   <div class="layout">
     <div class="controls">
-      <button onclick="drawNumber()">🎯 Draw Number</button>
+      <button id="drawBtn" onclick="drawNumber()">🎯 Draw Number</button>
       <button class="reset-btn" onclick="resetGame()">🔁 Reset</button>
       <button class="fs-btn" onclick="toggleFullscreen()">🖥 Fullscreen</button>
+
+      <select id="speedSelect">
+        <option value="2000" selected>⏩ 2 second</option>
+        <option value="3000">⏩ 3 seconds</option>
+        <option value="4000">⏩ 4 seconds</option>
+        <option value="5000">⏩ 5 seconds</option>
+      </select>
+
+      <button onclick="startAutoDraw()">▶ Start Auto</button>
+      <button onclick="stopAutoDraw()">⏹ Stop Auto</button>
     </div>
 
     <div id="board"></div>
@@ -142,9 +152,12 @@
   const lastNumberEl = document.getElementById("lastNumber");
   const lastBox = document.getElementById("lastBox");
   const historyList = document.getElementById("historyList");
+  const drawBtn = document.getElementById("drawBtn");
+  const speedSelect = document.getElementById("speedSelect");
 
   let numbers = [];
   let history = [];
+  let autoDrawInterval = null;
 
   function createBoard() {
     board.innerHTML = "";
@@ -152,6 +165,7 @@
     history = [];
     historyList.innerHTML = "";
     lastNumberEl.textContent = "-";
+
     for (let i = 1; i <= 90; i++) {
       const cell = document.createElement("div");
       cell.className = "cell";
@@ -171,7 +185,7 @@
 
   function speakNumber(num) {
     speechSynthesis.cancel();
-    const msg = new SpeechSynthesisUtterance("నంబర్ " + num);
+    const msg = new SpeechSynthesisUtterance(num);
     msg.voice = getTeluguVoice();
     msg.rate = 0.9;
     msg.pitch = 1.2;
@@ -190,7 +204,7 @@
     setTimeout(() => cell.classList.remove("glow"), 1200);
 
     lastBox.classList.remove("glow");
-    void lastBox.offsetWidth; // restart animation
+    void lastBox.offsetWidth;
     lastBox.classList.add("glow");
 
     history.unshift(num);
@@ -200,8 +214,34 @@
     speakNumber(num);
   }
 
+  function startAutoDraw() {
+    if (autoDrawInterval) return;
+
+    drawBtn.disabled = true;
+    drawBtn.style.opacity = 0.6;
+
+    const speed = Number(speedSelect.value);
+
+    autoDrawInterval = setInterval(() => {
+      if (numbers.length === 0) {
+        stopAutoDraw();
+        alert("All numbers drawn!");
+        return;
+      }
+      drawNumber();
+    }, speed);
+  }
+
+  function stopAutoDraw() {
+    clearInterval(autoDrawInterval);
+    autoDrawInterval = null;
+    drawBtn.disabled = false;
+    drawBtn.style.opacity = 1;
+  }
+
   function resetGame() {
     speechSynthesis.cancel();
+    stopAutoDraw();
     createBoard();
   }
 
@@ -213,7 +253,6 @@
     }
   }
 
-  // Remote control (same Wi-Fi): listen for messages
   const channel = new BroadcastChannel("housie-remote");
   channel.onmessage = (e) => {
     if (e.data === "draw") drawNumber();
